@@ -19,7 +19,7 @@ port = '5432'
 
 db_name = 'fyyur'
 
-#if there is no password there won't be ':' in the link 
+#if there is no password there won't be ':' in the link
 if password:
     password = ':' + password
 
