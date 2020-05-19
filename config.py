@@ -25,3 +25,5 @@ if password:
 
 #  IMPLEMENT DATABASE URL
 SQLALCHEMY_DATABASE_URI = f'{dialect}://{username}{password}@{host}:{port}/{db_name}'
+
+SQLALCHEMY_TRACK_MODIFICATIONS = False
