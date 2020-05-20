@@ -71,7 +71,7 @@ class Show(db.Model):
 	__tablename__ = "show"
 
 	id = db.Column(db.Integer, primary_key=True)
-	date = db.Column(db.DateTime)
+	start_time = db.Column(db.DateTime, nullable=False)
 	artist_id = db.Column(db.Integer, db.ForeignKey("Artist.id"), nullable=False)
 	venue_id = db.Column(db.Integer, db.ForeignKey("Venue.id"), nullable=False)
 	artist = db.relationship('Artist', backref="show_venue")
@@ -174,7 +174,25 @@ def index():
 def venues():
 	# TODO: replace with real venues data.
 	#       num_shows should be aggregated based on number of upcoming shows per venue.
-	data = [
+	try:
+		v = db.session.query(Venue).order_by(Venue.state, db.func.lower(Venue.city)).all()
+		# data = [{"city": venue.city, "state": venue.state } for i, venue in enumerate(v)]
+		
+		if v:
+			data, venues = [], []
+			s, c = v[0].state, v[0].city
+			for venue in v:
+				if venue.state != s or venue.city != c:
+					data.append({"city": c, "state": s, "venues": venues})
+					s, c = venue.state, venue.city
+					venues = []
+				venues.append({"id": venue.id, "name": venue.name})	
+	except Exception as e:
+		print(e)
+
+	
+	# data = [{"city": v.city, "state"}]
+	""" data = [
 		{
 			"city": "San Francisco",
 			"state": "CA",
@@ -194,7 +212,7 @@ def venues():
 				{"id": 2, "name": "The Dueling Pianos Bar", "num_upcoming_shows": 0,}
 			],
 		},
-	]
+	] """
 	return render_template("pages/venues.html", areas=data)
 
 
@@ -324,18 +342,11 @@ def create_venue_submission():
 	try:
 		data = request.form
 		genres = data.getlist('genres')
-		error = False
-		print("123\n")
-		print(data)
-		print(data.getlist('genres'))
 		v = Venue( name= data['name'], city=data['city'], state=data['state'], address=data['address'], phone=data['phone'], facebook_link=data['facebook_link'])
 		for genre in genres:
 			g = Genre.query.filter_by(name=genre).first()
 			g.venues.append(v)
-			print(g, g.id, g.name)
 		db.session.add(v)
-		
-		# db.session.rollback()
 		db.session.commit()
 		# on successful db insert, flash success
 		flash(f"Venue {data['name']}  was successfully listed!")
@@ -364,11 +375,13 @@ def delete_venue(venue_id):
 @app.route("/artists")
 def artists():
 	# TODO: replace with real data returned from querying the database
-	a = Artist.query.order_by('id').all()
-	print()
-	data = [{"id": artist.id, "name": f"{artist.name}"} for artist in a]
-	print(data)
-	print()
+	try:
+		data = db.session.query(Artist.id, Artist.name).order_by('id').all()
+	except Exception as e:
+		print(e)
+	
+	# data = [{"id": artist.id, "name": f"{artist.name}"} for artist in a]
+	# print(data)
 	""" data = [
 		{"id": 4, "name": "Guns N Petals",},
 		{"id": 5, "name": "Matt Quevedo",},
@@ -584,7 +597,9 @@ def shows():
 	# displays list of shows at /shows
 	# TODO: replace with real venues data.
 	#       num_shows should be aggregated based on number of upcoming shows per venue.
-	data = [
+	shows = Show.query.all()
+	data = [{"venue_id": s.id ,"venue_name": s.venue.name, "artist_id": s.artist_id, "artist_name": s.artist.name ,"artist_imag": "", "start_time": str(s.start_time)} for s in shows]
+	""" data = [
 		{
 			"venue_id": 1,
 			"venue_name": "The Musical Hop",
@@ -625,7 +640,7 @@ def shows():
 			"artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
 			"start_time": "2035-04-15T20:00:00.000Z",
 		},
-	]
+	] """
 	return render_template("pages/shows.html", shows=data)
 
 
