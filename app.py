@@ -5,7 +5,7 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for, jsonify
+from flask import Flask, render_template, request, Response, flash, redirect, url_for
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -13,7 +13,7 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
-
+import datetime
 # ----------------------------------------------------------------------------#
 # App Config.
 # ----------------------------------------------------------------------------#
@@ -74,11 +74,11 @@ class Show(db.Model):
 	start_time = db.Column(db.DateTime, nullable=False)
 	artist_id = db.Column(db.Integer, db.ForeignKey("Artist.id"), nullable=False)
 	venue_id = db.Column(db.Integer, db.ForeignKey("Venue.id"), nullable=False)
-	artist = db.relationship('Artist', backref="show_venue")
-	venue = db.relationship('Venue', backref="show_artist")
+	artist = db.relationship('Artist', backref="show")
+	venue = db.relationship('Venue', backref="show")
 
 	def __repr__(self):
-		return f'<Show {self.id} {self.date} artist id: {self.artist_id} venue id:{self.venue_id}>'
+		return f'<Show {self.id} {self.start_time} artist id: {self.artist_id} venue id:{self.venue_id}>'
 
 # Association tables
 artist_genre = db.Table(
@@ -169,7 +169,7 @@ def index():
 #  Venues
 #  ----------------------------------------------------------------
 
-
+# done
 @app.route("/venues")
 def venues():
 	# TODO: replace with real venues data.
@@ -215,28 +215,80 @@ def venues():
 	] """
 	return render_template("pages/venues.html", areas=data)
 
-
+# done
 @app.route("/venues/search", methods=["POST"])
 def search_venues():
 	# TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
 	# seach for Hop should return "The Musical Hop".
 	# search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
+	search = f"%{request.form.get('search_term')}%"
+	venues = db.session.query(Venue).filter(Venue.name.ilike(search)).all()
 	response = {
+		"count": len(venues),
+		"data": [{"id": v.id, "name": v.name, "num_upcoming_shows": 0,} for v in venues],
+	}
+	""" response = {
 		"count": 1,
 		"data": [{"id": 2, "name": "The Dueling Pianos Bar", "num_upcoming_shows": 0,}],
-	}
+	} """
 	return render_template(
 		"pages/search_venues.html",
 		results=response,
 		search_term=request.form.get("search_term", ""),
 	)
 
+def show_time(entity):
+	pass
+	""" {
+	"artist_id": 4,
+	"artist_name": "Guns N Petals",
+	"artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
+	"start_time": "2019-05-21T21:30:00.000Z",
+	} """
+	past_shows = []
+	up_coming_shows = []
+	# shows = [s for s in entity.show]
+	for s in entity.show:
+		pass
+		if s.start_time > datetime.datetime.now():
+			up_coming_shows.append(s)
+		else:
+			past_shows.append(s)
+	now = datetime.datetime.utcnow()
+	print(shows)
+	return [], []
 
+# done
 @app.route("/venues/<int:venue_id>")
 def show_venue(venue_id):
 	# shows the venue page with the given venue_id
 	# TODO: replace with real venue data from the venues table, using venue_id
-	data1 = {
+	try:
+		v = Venue.query.get(venue_id)
+		if v:
+			data = {
+				"id": venue_id,
+				"name": v.name,
+				"genres": [g.name for g in v.genres],
+				"address": v.address,
+				"city": v.city,
+				"state": v.state,
+				"phone": v.phone,
+				"website": "",
+				"facebook_link": v.facebook_link,
+				"seeking_talent": "",
+				"seeking_description": "",
+				"image_link": v.image_link,
+				"past_shows": "",
+				"upcoming_shows": [],
+				"past_shows_count": 0,
+				"upcoming_shows_count": 0,
+			}
+		else:
+			data = {"name": "no venue with that id"}
+	except Exception as e:
+		print(e)
+	""" data1 = {
 		"id": 1,
 		"name": "The Musical Hop",
 		"genres": ["Jazz", "Reggae", "Swing", "Classical", "Folk"],
@@ -320,21 +372,21 @@ def show_venue(venue_id):
 		],
 		"past_shows_count": 1,
 		"upcoming_shows_count": 1,
-	}
-	data = list(filter(lambda d: d["id"] == venue_id, [data1, data2, data3]))[0]
+	} """
+	# data = list(filter(lambda d: d["id"] == venue_id, [data1, data2, data3]))[0]
 	return render_template("pages/show_venue.html", venue=data)
 
 
 #  Create Venue
 #  ----------------------------------------------------------------
 
-
+# done
 @app.route("/venues/create", methods=["GET"])
 def create_venue_form():
 	form = VenueForm()
 	return render_template("forms/new_venue.html", form=form)
 
-
+# done
 @app.route("/venues/create", methods=["POST"])
 def create_venue_submission():
 	# TODO: insert form data as a new Venue record in the db, instead
@@ -372,6 +424,7 @@ def delete_venue(venue_id):
 
 #  Artists
 #  ----------------------------------------------------------------
+# done
 @app.route("/artists")
 def artists():
 	# TODO: replace with real data returned from querying the database
@@ -388,28 +441,58 @@ def artists():
 		{"id": 6, "name": "The Wild Sax Band",},] """
 	return render_template("pages/artists.html", artists=data)
 
-
+# done
 @app.route("/artists/search", methods=["POST"])
 def search_artists():
 	# TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
 	# seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
 	# search for "band" should return "The Wild Sax Band".
+	search = f"%{request.form.get('search_term')}%"
+	artists = db.session.query(Artist).filter(Artist.name.ilike(search)).all()
 	response = {
+		"count": len(artists),
+		"data": [{"id": a.id, "name": a.name, "num_upcoming_shows": 0,} for a in artists],
+	}
+	""" response = {
 		"count": 1,
 		"data": [{"id": 4, "name": "Guns N Petals", "num_upcoming_shows": 0,}],
-	}
+	} """
 	return render_template(
 		"pages/search_artists.html",
 		results=response,
 		search_term=request.form.get("search_term", ""),
 	)
 
-
+# done
 @app.route("/artists/<int:artist_id>")
 def show_artist(artist_id):
 	# shows the venue page with the given venue_id
 	# TODO: replace with real venue data from the venues table, using venue_id
-	data1 = {
+	try:
+		a = Artist.query.get(artist_id)
+		if a:
+			data = {
+				"id": a.id,
+				"name": a.name,
+				"genres": [g.name for g in a.genres],
+				"city": a.city,
+				"state": a.state,
+				"phone": a.phone,
+				"website": "",
+				"facebook_link": a.facebook_link,
+				"seeking_venue": "",
+				"seeking_description": "",
+				"image_link": a.image_link,
+				"past_shows": "",
+				"upcoming_shows": [],
+				"past_shows_count": 0,
+				"upcoming_shows_count": 0,
+			}
+		else:
+			data = {"name": "no venue with that id"}
+	except Exception as e:
+		print(e)
+	""" data1 = {
 		"id": 4,
 		"name": "Guns N Petals",
 		"genres": ["Rock n Roll"],
@@ -487,8 +570,8 @@ def show_artist(artist_id):
 		],
 		"past_shows_count": 0,
 		"upcoming_shows_count": 3,
-	}
-	data = list(filter(lambda d: d["id"] == artist_id, [data1, data2, data3]))[0]
+	} 
+	data = list(filter(lambda d: d["id"] == artist_id, [data1, data2, data3]))[0]"""
 	return render_template("pages/show_artist.html", artist=data)
 
 
@@ -657,11 +740,8 @@ def create_show_submission():
 	# TODO: insert form data as a new Show record in the db, instead
 	try:
 		data = request.form
-		print(data)
 		a = Artist.query.get(data['artist_id'])
 		v = Venue.query.get(data['venue_id'])
-		print(a)
-		print(v)
 		if a and v:
 			s = Show(artist=a, venue=v, date=data['start_time'])
 			db.session.add(s)
