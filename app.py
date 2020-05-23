@@ -153,6 +153,31 @@ def format_datetime(value, format="medium"):
 		format = "EE MM, dd, y h:mma"
 	return babel.dates.format_datetime(date, format)
 
+def show_response_format(show_list):
+	""" {
+	"artist_id": 4,
+	"artist_name": "Guns N Petals",
+	"artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
+	"start_time": "2019-05-21T21:30:00.000Z",
+	} """
+	return [{
+	"artist_id": s.artist_id,
+	"artist_name": s.artist.name,
+	"artist_image_link": s.artist.image_link,
+	"start_time": str(s.start_time),
+	} for s in show_list]
+	
+def show_times(entity):
+	'retun two arrays. pastshows[], upcomingshows[]'
+	past_shows = []
+	up_coming_shows = []
+	for s in entity.show:
+		if s.start_time >= datetime.datetime.now():
+			up_coming_shows.append(s)
+		else:
+			past_shows.append(s)
+	
+	return (past_shows, up_coming_shows)
 
 app.jinja_env.filters["datetime"] = format_datetime
 
@@ -186,12 +211,14 @@ def venues():
 					data.append({"city": c, "state": s, "venues": venues})
 					s, c = venue.state, venue.city
 					venues = []
-				venues.append({"id": venue.id, "name": venue.name})	
+				_, up_coming = show_times(venue)
+				print(up_coming)
+				venues.append({"id": venue.id, "name": venue.name, "num_upcoming_shows": len(up_coming) })	
 	except Exception as e:
 		print(e)
 
 	
-	# data = [{"city": v.city, "state"}]
+	
 	""" data = [
 		{
 			"city": "San Francisco",
@@ -225,7 +252,7 @@ def search_venues():
 	venues = db.session.query(Venue).filter(Venue.name.ilike(search)).all()
 	response = {
 		"count": len(venues),
-		"data": [{"id": v.id, "name": v.name, "num_upcoming_shows": 0,} for v in venues],
+		"data": [{"id": v.id, "name": v.name, "num_upcoming_shows": len(show_times(v)[1]),} for v in venues],
 	}
 	""" response = {
 		"count": 1,
@@ -237,34 +264,15 @@ def search_venues():
 		search_term=request.form.get("search_term", ""),
 	)
 
-def show_time(entity):
-	pass
-	""" {
-	"artist_id": 4,
-	"artist_name": "Guns N Petals",
-	"artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-	"start_time": "2019-05-21T21:30:00.000Z",
-	} """
-	past_shows = []
-	up_coming_shows = []
-	# shows = [s for s in entity.show]
-	for s in entity.show:
-		pass
-		if s.start_time > datetime.datetime.now():
-			up_coming_shows.append(s)
-		else:
-			past_shows.append(s)
-	now = datetime.datetime.utcnow()
-	print(shows)
-	return [], []
 
-# done
+#done
 @app.route("/venues/<int:venue_id>")
 def show_venue(venue_id):
 	# shows the venue page with the given venue_id
 	# TODO: replace with real venue data from the venues table, using venue_id
 	try:
 		v = Venue.query.get(venue_id)
+		past_shows, upcoming_shows = show_times(v)
 		if v:
 			data = {
 				"id": venue_id,
@@ -279,10 +287,10 @@ def show_venue(venue_id):
 				"seeking_talent": "",
 				"seeking_description": "",
 				"image_link": v.image_link,
-				"past_shows": "",
-				"upcoming_shows": [],
-				"past_shows_count": 0,
-				"upcoming_shows_count": 0,
+				"past_shows": show_response_format(past_shows),
+				"upcoming_shows": show_response_format(upcoming_shows),
+				"past_shows_count": len(past_shows),
+				"upcoming_shows_count": len(upcoming_shows),
 			}
 		else:
 			data = {"name": "no venue with that id"}
@@ -743,7 +751,7 @@ def create_show_submission():
 		a = Artist.query.get(data['artist_id'])
 		v = Venue.query.get(data['venue_id'])
 		if a and v:
-			s = Show(artist=a, venue=v, date=data['start_time'])
+			s = Show(artist=a, venue=v, start_time=data['start_time'])
 			db.session.add(s)
 		else:
 			raise Exception("Either the venue or the artist doesn't exist")
