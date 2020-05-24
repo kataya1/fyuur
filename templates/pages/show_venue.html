@@ -74,6 +74,24 @@
 		{% endfor %}
 	</div>
 </section>
+<section>
+	<button data-id="{{ venue.id }}" id="deletebutton4bonus"  onclick="fetch( `/venues/${$(this).attr('data-id')}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })" style="
+		--webkit-appearance: none;
+		background-color: inherit;
+		border-radius: 100%;
+		border:none;
+		outline: none;
+		color: red;
+		font-size: medium;
+		cursor: pointer;
+		float: right;
+		height: min-content;  
+	">DELETE VENUE</button>
+</section>
 
 {% endblock %}
-
